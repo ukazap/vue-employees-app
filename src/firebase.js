@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase'
 
-// it's not the best idea to hardcode this, but for the sake of this assignment.
+// in the real world, we should not hardcode these values.
 
 const app = initializeApp({
   apiKey: 'AIzaSyAcyH1fR16IFMwsxX6qDKvppvrIS8KD2I0',
@@ -12,3 +12,4 @@ const app = initializeApp({
 })
 
 export const db = app.database()
+export const storage = app.storage()

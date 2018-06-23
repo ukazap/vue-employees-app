@@ -34,7 +34,11 @@
             <md-card-content>
               <div class="md-layout md-gutter">
                 <div class="md-layout-item md-size-25">
-                  <h1>Avatar</h1>
+                  <md-avatar :class="getAvatarClass()">
+                    <img v-if="form.pictureURL" :src="form.pictureURL" alt="Profile Picture" @click="onSelectPicture">
+                    <img v-else src="./assets/placeholder.png" alt="Profile Picture" @click="onSelectPicture">
+                    <input type="file" style="display: none" ref="pictureInput" accept="image/*" @change="onPictureSelected">
+                  </md-avatar>
                 </div>
 
                 <div class="md-layout-item md-size-75">
@@ -93,6 +97,7 @@
             </md-card-actions>
           </form>
           <md-snackbar :md-active.sync="employeeSaved">The employee {{ lastEmployee }} was saved with success!</md-snackbar>
+          <md-snackbar :md-active.sync="fileError">Please add a valid file!</md-snackbar>
 
           <md-table md-card md-fixed-header class="md-layout-item md-size-100" v-model="filteredEmployee" @md-selected="onSelectEmployee">
             <md-table-toolbar>
@@ -133,17 +138,21 @@
       min-height: 200px;
       border-radius: 100px;
     }
+
+    .employee-avatar:hover {
+      border: 3px dashed black;
+      cursor: pointer;
+    }
   }
 </style>
 
 <script>
-import { db } from './firebase'
+import { db, storage } from './firebase'
 import CountryList from 'country-list'
 import { validationMixin } from 'vuelidate'
 import {
   required,
-  minLength,
-  maxLength
+  minLength
 } from 'vuelidate/lib/validators'
 
 const countryList = CountryList()
@@ -152,7 +161,8 @@ const initialFormValues = {
   firstName: null,
   lastName: null,
   age: null,
-  country: null
+  country: null,
+  pictureURL: null
 }
 
 const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
@@ -167,6 +177,8 @@ export default {
     countries: countryList.getData(),
     form: initialFormValues,
     employeeSaved: false,
+    picture: null,
+    fileError: false,
     sending: false,
     letters: [...letters],
     selectedLetters: [...letters],
@@ -179,15 +191,14 @@ export default {
       },
       firstName: {
         required,
-        minLength: minLength(2)
+        minLength: minLength(1)
       },
       lastName: {
         required,
-        minLength: minLength(2)
+        minLength: minLength(1)
       },
       age: {
-        required,
-        maxLength: maxLength(3)
+        required
       },
       country: {
         required
@@ -207,6 +218,9 @@ export default {
     getTableRowClass (employee) {
       return {'md-primary': this.form['.key'] === employee['.key']}
     },
+    getAvatarClass () {
+      return {'md-large': true, 'employee-avatar': !this.formDisabled}
+    },
     getFullName ({ firstName, lastName }) {
       return `${firstName} ${lastName}`
     },
@@ -214,6 +228,7 @@ export default {
     clearForm () {
       this.$v.$reset()
       this.form = initialFormValues
+      this.picture = false
     },
     onSelectEmployee (employee) {
       console.log(this)
@@ -224,6 +239,28 @@ export default {
         this.form = {...employee}
       }
     },
+    onSelectPicture () {
+      if (this.formDisabled) {
+        return
+      }
+      this.fileError = false
+      this.$refs.pictureInput.click()
+    },
+    onPictureSelected (event) {
+      const picture = event.target.files[0]
+
+      if (picture.name.lastIndexOf('.') <= 0) {
+        this.fileError = true
+        return
+      }
+
+      const fileReader = new FileReader()
+      fileReader.addEventListener('load', () => {
+        this.form.pictureURL = fileReader.result
+      })
+      fileReader.readAsDataURL(picture)
+      this.picture = picture
+    },
     showAll () {
       this.selectedLetters = letters
     },
@@ -231,13 +268,34 @@ export default {
       this.selectedLetters = []
     },
     saveEmployee () {
-      let newEmployee = {...this.form}
+      const newEmployee = {...this.form}
       this.sending = true
-      this.$firebaseRefs.employees.push(newEmployee)
-      this.lastEmployee = this.getFullName(newEmployee)
-      this.employeeSaved = true
-      this.sending = false
-      this.clearForm()
+
+      const submit = async () => {
+        const key = (await this.$firebaseRefs.employees.push(newEmployee)).key
+
+        if (this.picture) {
+          const filename = this.picture.name
+          const ext = filename.slice(filename.lastIndexOf('.'))
+          const fileRef = storage.ref(`pictures/${key}.${ext}`)
+          const snapshot = await fileRef.put(this.picture)
+          const pictureURL = await snapshot.ref.getDownloadURL()
+          await this.$firebaseRefs.employees.child(key).update({ pictureURL })
+        }
+      }
+
+      submit()
+        .then(() => {
+          this.lastEmployee = this.getFullName(newEmployee)
+          this.employeeSaved = true
+          this.sending = false
+          this.clearForm()
+        })
+        .catch((error) => {
+          console.log(error)
+          this.sending = false
+          this.clearForm()
+        })
     },
     validateEmployee () {
       this.$v.$touch()
