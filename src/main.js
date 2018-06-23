@@ -11,9 +11,13 @@ import 'vue-material/dist/theme/default.css'
 import './firebase'
 import VueFire from 'vuefire'
 
+import VueChartkick from 'vue-chartkick'
+import Chart from 'chart.js'
+
 Vue.config.productionTip = false
 Vue.use(VueMaterial)
 Vue.use(VueFire)
+Vue.use(VueChartkick, { adapter: Chart })
 
 /* eslint-disable no-new */
 new Vue({

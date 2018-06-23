@@ -141,22 +141,22 @@
           <md-card>
             <md-card-header>
               <md-card-header-text>
-                <div class="md-title">Employees by Age</div>
+                <div class="md-title">Number of Employees by Age</div>
               </md-card-header-text>
             </md-card-header>
             <md-card-content>
-              chart
+              <bar-chart :data="employeesByAge"></bar-chart>
             </md-card-content>
           </md-card>
 
           <md-card>
             <md-card-header>
               <md-card-header-text>
-                <div class="md-title">Employees by Country</div>
+                <div class="md-title">Number of Employees by Country</div>
               </md-card-header-text>
             </md-card-header>
             <md-card-content>
-              chart
+              <bar-chart :data="employeesByCountry"></bar-chart>
             </md-card-content>
           </md-card>
         </div>
@@ -384,8 +384,27 @@ export default {
       return this.employees.filter(({ firstName }) => this.selectedLetters.indexOf(firstName[0].toUpperCase()) > -1)
     },
     averageAge () {
-      console.log(this.employees)
+      if (!this.employees.length) {
+        return 0
+      }
       return this.employees.reduce((total, employee) => total + parseInt(employee.age), 0) / this.employees.length
+    },
+    employeesByAge () {
+      if (!this.employees.length) {
+        return []
+      }
+      return [...this.employees.reduce((map, { age }) => {
+        return map.set(age, (map.get(age) || 0) + 1)
+      }, new Map()).entries()]
+    },
+    employeesByCountry () {
+      if (!this.employees.length) {
+        return []
+      }
+      return [...this.employees.reduce((map, { country }) => {
+        const countryName = this.getCountryName(country)
+        return map.set(countryName, (map.get(countryName) || 0) + 1)
+      }, new Map()).entries()]
     }
   }
 }
