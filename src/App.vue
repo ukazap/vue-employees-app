@@ -94,7 +94,17 @@
           </form>
           <md-snackbar :md-active.sync="employeeSaved">The employee {{ lastEmployee }} was saved with success!</md-snackbar>
 
-          <md-table md-card md-fixed-header class="md-layout-item md-size-100" v-model="employees" @md-selected="onSelectEmployee">
+          <md-table md-card md-fixed-header class="md-layout-item md-size-100" v-model="filteredEmployee" @md-selected="onSelectEmployee">
+            <md-table-toolbar>
+              <md-field>
+                <label for="letters">Filter (A-Z)</label>
+                <md-select v-model="selectedLetters" name="letters" id="letters" multiple>
+                  <md-option v-for="letter in letters" v-bind:key="letter" v-bind:value="letter">{{ letter }}</md-option>
+                </md-select>
+              </md-field>
+              <md-button class="md-primary" @click="showAll">Show All</md-button>
+              <md-button class="md-primary" @click="hideAll">Hide All</md-button>
+            </md-table-toolbar>
             <md-table-row slot="md-table-row" slot-scope="{ item: employee }" :class="getTableRowClass(employee)" md-selectable="single">
               <md-table-cell md-label="Name" md-sort-by="name">{{ getFullName(employee) }}</md-table-cell>
               <md-table-cell md-label="Country" md-sort-by="gender">{{ getCountryName(employee.country) }}</md-table-cell>
@@ -127,6 +137,7 @@
 </style>
 
 <script>
+import { db } from './firebase'
 import CountryList from 'country-list'
 import { validationMixin } from 'vuelidate'
 import {
@@ -137,43 +148,28 @@ import {
 
 const countryList = CountryList()
 
+const initialFormValues = {
+  firstName: null,
+  lastName: null,
+  age: null,
+  country: null
+}
+
+const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('')
+
 export default {
   name: 'FormValidation',
   mixins: [validationMixin],
+  firebase: {
+    employees: db.ref('employees')
+  },
   data: () => ({
     countries: countryList.getData(),
-    form: {
-      id: null,
-      firstName: null,
-      lastName: null,
-      country: null,
-      age: null
-    },
-    employees: [
-      {
-        id: 1,
-        firstName: 'Ukaza',
-        lastName: 'Perdana',
-        country: 'ID',
-        age: 23
-      },
-      {
-        id: 2,
-        firstName: 'Stephen',
-        lastName: 'Yu',
-        country: 'SG',
-        age: 23
-      },
-      {
-        id: 3,
-        firstName: 'Adrian',
-        lastName: 'Rotama',
-        country: 'JP',
-        age: 23
-      }
-    ],
+    form: initialFormValues,
     employeeSaved: false,
     sending: false,
+    letters: [...letters],
+    selectedLetters: [...letters],
     lastEmployee: null
   }),
   validations: {
@@ -208,8 +204,8 @@ export default {
         }
       }
     },
-    getTableRowClass ({ id }) {
-      return {'md-primary': this.form.id === id}
+    getTableRowClass (employee) {
+      return {'md-primary': this.form['.key'] === employee['.key']}
     },
     getFullName ({ firstName, lastName }) {
       return `${firstName} ${lastName}`
@@ -217,13 +213,10 @@ export default {
     getCountryName: countryList.getName,
     clearForm () {
       this.$v.$reset()
-      this.form.id = null
-      this.form.firstName = null
-      this.form.lastName = null
-      this.form.age = null
-      this.form.country = null
+      this.form = initialFormValues
     },
     onSelectEmployee (employee) {
+      console.log(this)
       if (!employee) {
         this.clearForm()
       } else {
@@ -231,21 +224,23 @@ export default {
         this.form = {...employee}
       }
     },
+    showAll () {
+      this.selectedLetters = letters
+    },
+    hideAll () {
+      this.selectedLetters = []
+    },
     saveEmployee () {
       let newEmployee = {...this.form}
       this.sending = true
-      // Instead of this timeout, here you can call your API
-      window.setTimeout(() => {
-        this.employees.push(newEmployee)
-        this.lastEmployee = this.getFullName(newEmployee)
-        this.employeeSaved = true
-        this.sending = false
-        this.clearForm()
-      }, 1500)
+      this.$firebaseRefs.employees.push(newEmployee)
+      this.lastEmployee = this.getFullName(newEmployee)
+      this.employeeSaved = true
+      this.sending = false
+      this.clearForm()
     },
     validateEmployee () {
       this.$v.$touch()
-
       if (!this.$v.$invalid) {
         this.saveEmployee()
       }
@@ -253,7 +248,13 @@ export default {
   },
   computed: {
     formDisabled () {
-      return this.form.id !== null || this.sending
+      return !!this.form['.key'] || this.sending
+    },
+    filteredEmployee () {
+      if (this.selectedLetters.length === 26) {
+        return this.employees
+      }
+      return this.employees.filter(({ firstName }) => this.selectedLetters.indexOf(firstName[0].toUpperCase()) > -1)
     }
   }
 }
