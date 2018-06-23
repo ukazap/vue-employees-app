@@ -6,7 +6,8 @@
           <md-icon>group</md-icon>
           Vue Employee Data App
           <md-icon>chevron_right</md-icon>
-          Employees
+          <span v-if="showTable">Employees</span>
+          <span v-else>Summary</span>
         </span>
       </md-app-toolbar>
 
@@ -16,12 +17,12 @@
         </md-toolbar>
 
         <md-list>
-          <md-list-item>
+          <md-list-item :class="getNavItemClass(false)" @click="setShowTable(false)">
             <md-icon>pie_chart</md-icon>
             <span class="md-list-item-text">Summary</span>
           </md-list-item>
 
-          <md-list-item>
+          <md-list-item :class="getNavItemClass(true)" @click="setShowTable(true)">
             <md-icon>view_list</md-icon>
             <span class="md-list-item-text">Employees</span>
           </md-list-item>
@@ -29,7 +30,7 @@
       </md-app-drawer>
 
       <md-app-content>
-        <div class="md-layout">
+        <div :class="getSectionClass(false)">
           <form novalidate md-card class="md-layout-item md-size-100" @submit.prevent="validateEmployee">
             <md-card-content>
               <div class="md-layout md-gutter">
@@ -118,6 +119,9 @@
           </md-table>
         </div>
 
+        <div :class="getSectionClass(true)">
+
+        </div>
       </md-app-content>
     </md-app>
   </div>
@@ -127,6 +131,10 @@
   .md-app {
     height: 100vh;
     border: 1px solid rgba(#000, .12);
+
+    .hidden {
+      display: none;
+    }
 
     .md-drawer {
       width: 230px;
@@ -142,6 +150,19 @@
     .employee-avatar:hover {
       border: 3px dashed black;
       cursor: pointer;
+    }
+
+    .nav-item {
+      cursor: pointer;
+
+      &:hover {
+        background-color: #ccc;
+        color: #fff
+      }
+
+      &.highlighted {
+        background-color: #eee
+      }
     }
   }
 </style>
@@ -174,6 +195,7 @@ export default {
     employees: db.ref('employees')
   },
   data: () => ({
+    showTable: false, // true: show summary, false: show employee table, TODO: implement using VueRouter
     countries: countryList.getData(),
     form: initialFormValues,
     employeeSaved: false,
@@ -218,13 +240,22 @@ export default {
     getTableRowClass (employee) {
       return {'md-primary': this.form['.key'] === employee['.key']}
     },
+    getNavItemClass (showTable) {
+      return {'nav-item': true, 'highlighted': this.showTable === showTable}
+    },
     getAvatarClass () {
       return {'md-large': true, 'employee-avatar': !this.formDisabled}
+    },
+    getSectionClass (showTable) {
+      return {'md-layout': true, 'hidden': this.showTable === showTable}
     },
     getFullName ({ firstName, lastName }) {
       return `${firstName} ${lastName}`
     },
     getCountryName: countryList.getName,
+    setShowTable (showTable) {
+      this.showTable = showTable
+    },
     clearForm () {
       this.$v.$reset()
       this.form = initialFormValues
