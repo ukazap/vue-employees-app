@@ -120,7 +120,45 @@
         </div>
 
         <div :class="getSectionClass(true)">
+          <md-card>
+            <md-card-header>
+              <md-card-header-text>
+                <div class="md-title">{{ employees.length }}</div>
+                <div class="md-subhead">registered employees</div>
+              </md-card-header-text>
+            </md-card-header>
+          </md-card>
 
+          <md-card>
+            <md-card-header>
+              <md-card-header-text>
+                <div class="md-title">{{ averageAge }} years</div>
+                <div class="md-subhead">average employees age</div>
+              </md-card-header-text>
+            </md-card-header>
+          </md-card>
+
+          <md-card>
+            <md-card-header>
+              <md-card-header-text>
+                <div class="md-title">Employees by Age</div>
+              </md-card-header-text>
+            </md-card-header>
+            <md-card-content>
+              chart
+            </md-card-content>
+          </md-card>
+
+          <md-card>
+            <md-card-header>
+              <md-card-header-text>
+                <div class="md-title">Employees by Country</div>
+              </md-card-header-text>
+            </md-card-header>
+            <md-card-content>
+              chart
+            </md-card-content>
+          </md-card>
         </div>
       </md-app-content>
     </md-app>
@@ -344,6 +382,10 @@ export default {
         return this.employees
       }
       return this.employees.filter(({ firstName }) => this.selectedLetters.indexOf(firstName[0].toUpperCase()) > -1)
+    },
+    averageAge () {
+      console.log(this.employees)
+      return this.employees.reduce((total, employee) => total + parseInt(employee.age), 0) / this.employees.length
     }
   }
 }
